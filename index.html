@@ -44,6 +44,25 @@ body{background:var(--bg);color:var(--text);font-family:'M PLUS Rounded 1c',sans
 .title-divider{width:60px;height:1px;background:var(--border);margin:0 auto 1rem}
 .title-footer{font-size:.65rem;color:#3a3650;letter-spacing:.05em;text-align:center;line-height:1.8;position:relative}
 .title-footer span{color:var(--text3)}
+/* APIキーボタン */
+.api-key-btn{background:transparent;border:1px solid var(--border2);border-radius:99px;padding:5px 14px;font-size:.7rem;color:var(--text3);cursor:pointer;font-family:'M PLUS Rounded 1c',sans-serif;transition:all .2s;display:flex;align-items:center;gap:6px}
+.api-key-btn:hover{border-color:var(--accent2);color:var(--text2)}
+.api-key-btn .dot{width:7px;height:7px;border-radius:50%;background:var(--text3);flex-shrink:0;transition:background .2s}
+.api-key-btn.set .dot{background:#4ecb8a}
+.api-key-btn.set{border-color:rgba(42,157,90,.4);color:#4ecb8a}
+/* ダイアログオーバーレイ */
+.dialog-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:100;align-items:center;justify-content:center;padding:1rem}
+.dialog-overlay.show{display:flex}
+.dialog-box{background:var(--surface);border:1px solid var(--border2);border-radius:var(--radius);padding:1.5rem;width:100%;max-width:400px}
+.dialog-title{font-size:.9rem;font-weight:700;color:var(--text);margin-bottom:.4rem}
+.dialog-desc{font-size:.72rem;color:var(--text3);margin-bottom:1rem;line-height:1.7}
+.dialog-input{width:100%;background:var(--bg);border:1px solid var(--border2);border-radius:var(--radius-sm);padding:8px 12px;color:var(--text);font-size:.8rem;font-family:monospace;outline:none;margin-bottom:.75rem}
+.dialog-input:focus{border-color:var(--accent2)}
+.dialog-btns{display:flex;gap:8px;justify-content:flex-end}
+.dialog-btn{padding:7px 18px;font-size:.78rem;border-radius:var(--radius-sm);border:1px solid var(--border2);background:transparent;color:var(--text2);cursor:pointer;font-family:'M PLUS Rounded 1c',sans-serif;transition:all .15s}
+.dialog-btn:hover{background:var(--surface2);color:var(--text)}
+.dialog-btn.ok{background:var(--accent);color:#fff;border-color:var(--accent)}
+.dialog-btn.ok:hover{background:var(--accent2);border-color:var(--accent2)}
 
 /* ===== BATTLE ===== */
 #battle-screen{display:none;flex-direction:column;align-items:center;padding:1rem;min-height:100vh}
@@ -151,21 +170,29 @@ body{background:var(--bg);color:var(--text);font-family:'M PLUS Rounded 1c',sans
     <div class="title-card"><span class="card-cost-mini">3</span>📿<span class="card-label">???</span></div>
   </div>
   <button class="start-btn" onclick="startGame()"><span class="btn-pulse"></span>ゲームを始める</button>
-  <div class="title-divider"></div>
+  <button class="api-key-btn" id="apiKeyBtn" onclick="openApiDialog()">
+    <span class="dot"></span><span id="apiKeyBtnLabel">APIキーを設定</span>
+  </button>
+  <div class="title-divider" style="margin-top:1.25rem"></div>
   <div class="title-footer">カードを使うたびに <span>AIが結果を判定</span> する<br>トークン消費 = 勇者のHP — 節約しながら魔王を倒せ</div>
+</div>
+
+<!-- APIキーダイアログ -->
+<div class="dialog-overlay" id="apiDialog">
+  <div class="dialog-box">
+    <div class="dialog-title">🔑 Anthropic APIキーの設定</div>
+    <div class="dialog-desc">APIキーを入力するとAIが自動で判定します。<br>設定しない場合は手動モードで遊べます。<br>キーはこのブラウザに保存されます。</div>
+    <input class="dialog-input" type="password" id="apiKeyInput" placeholder="sk-ant-...">
+    <div class="dialog-btns">
+      <button class="dialog-btn" onclick="closeApiDialog()">キャンセル</button>
+      <button class="dialog-btn" onclick="clearApiKey()">削除</button>
+      <button class="dialog-btn ok" onclick="saveApiKey()">保存</button>
+    </div>
+  </div>
 </div>
 
 <!-- バトル画面 -->
 <div id="battle-screen">
-  <div class="header">
-    <h1>⚡ カオス<span>RPG</span></h1>
-    <p>謎のカードで魔王を倒せ — 使うほど命が削れていく</p>
-  </div>
-  <div class="api-panel">
-    <label>Anthropic API Key</label>
-    <input class="api-input" type="password" id="apiKey" placeholder="sk-ant-..." oninput="onKeyInput()">
-    <span class="api-status none" id="apiStatus">未設定（手動モード）</span>
-  </div>
   <div id="game">
     <div class="scene">
       <div class="battle-row">
@@ -233,12 +260,35 @@ function startGame(){
   initBattle();
 }
 
+/* APIキー管理 */
+function getApiKey(){try{return localStorage.getItem('chaos_rpg_apikey')||'';}catch(e){return '';}}
+function updateApiKeyBtn(){
+  var key=getApiKey(),btn=document.getElementById('apiKeyBtn'),label=document.getElementById('apiKeyBtnLabel');
+  if(key&&key.startsWith('sk-ant-')){btn.className='api-key-btn set';label.textContent='APIキー設定済み';}
+  else{btn.className='api-key-btn';label.textContent='APIキーを設定';}
+}
+function openApiDialog(){
+  document.getElementById('apiKeyInput').value=getApiKey();
+  document.getElementById('apiDialog').className='dialog-overlay show';
+}
+function closeApiDialog(){document.getElementById('apiDialog').className='dialog-overlay';}
+function saveApiKey(){
+  var v=document.getElementById('apiKeyInput').value.trim();
+  try{if(v)localStorage.setItem('chaos_rpg_apikey',v);else localStorage.removeItem('chaos_rpg_apikey');}catch(e){}
+  closeApiDialog();updateApiKeyBtn();
+}
+function clearApiKey(){
+  try{localStorage.removeItem('chaos_rpg_apikey');}catch(e){}
+  document.getElementById('apiKeyInput').value='';
+  closeApiDialog();updateApiKeyBtn();
+}
+document.getElementById('apiDialog').addEventListener('click',function(e){if(e.target===this)closeApiDialog();});
+updateApiKeyBtn();
+
 /* バトル */
 var G={php:300,pmaxhp:300,ehp:70,emaxhp:70,mana:3,maxMana:3,turn:1,waiting:false,gameOver:false,pStatus:[],eStatus:[],history:[],hand:[],mode:'card',totalTokens:0,pendingPrompt:'',pendingCard:null};
 var RATE=0.06;
 function estimateTokens(t){var jp=(t.match(/[\u3000-\u9fff\uff00-\uffef]/g)||[]).length;return Math.ceil(jp+(t.length-jp)*0.25);}
-function getApiKey(){return document.getElementById('apiKey').value.trim();}
-function onKeyInput(){var k=getApiKey(),el=document.getElementById('apiStatus');if(!k){el.className='api-status none';el.textContent='未設定（手動モード）';}else if(k.startsWith('sk-ant-')){el.className='api-status ok';el.textContent='✓ APIキー設定済み（自動モード）';}else{el.className='api-status ng';el.textContent='⚠ キーの形式を確認してください';}}
 var CARDS=[
   {id:'c1',name:'中指を突き出す',icon:'🖕',cost:1,mystery:'何かが起きるかも'},
   {id:'c2',name:'謎の赤い薬',icon:'🧪',cost:1,mystery:'飲むと…？'},
