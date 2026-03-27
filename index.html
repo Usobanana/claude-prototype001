@@ -143,12 +143,13 @@ body{background:var(--bg);color:var(--text);font-family:'M PLUS Rounded 1c',sans
 .enemy-bubble::after{content:'';position:absolute;top:50%;right:-11px;transform:translateY(-50%);border:6px solid transparent;border-left-color:rgba(200,60,40,.5);border-right:none}
 
 /* ナラティブ */
-.narrative-box{background:rgba(10,6,2,.85);border-top:1px solid rgba(120,80,40,.3);border-bottom:1px solid rgba(120,80,40,.3);padding:.75rem 1.5rem;min-height:52px;cursor:pointer;display:none;position:relative}
+.narrative-box{background:rgba(10,6,2,.92);border-top:1px solid rgba(200,160,60,.3);border-bottom:1px solid rgba(200,160,60,.3);padding:.75rem 1.5rem 1rem;min-height:52px;cursor:pointer;display:none;position:relative;transition:background .15s}
 .narrative-box.show{display:block}
+.narrative-box.show:hover{background:rgba(25,15,5,.95);border-top-color:rgba(200,160,60,.5);border-bottom-color:rgba(200,160,60,.5)}
 .narrative-text{font-size:.75rem;line-height:1.9;color:#c8a878;font-style:italic}
-.narrative-next{font-size:.58rem;color:#6a5030;text-align:right;margin-top:3px;animation:blink 1s ease-in-out infinite;display:none}
+.narrative-next{font-size:.6rem;color:#a07840;text-align:right;margin-top:6px;animation:blink 1s ease-in-out infinite;display:none;letter-spacing:.04em}
 .narrative-next.show{display:block}
-@keyframes blink{0%,100%{opacity:.2}50%{opacity:.8}}
+@keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
 
 /* ボトムUI */
 .bottom-ui{padding:.75rem 1rem;border-top:1px solid rgba(120,80,40,.2);display:flex;flex-direction:column;gap:.6rem}
@@ -467,24 +468,45 @@ function mqNext(){
 function mqWaitClick(){
   var nb=document.getElementById('narrativeBox');
   var hasMore=MQ.queue.length>0;
+
+  // narrativeBoxが表示中なら「続ける」表示
   if(nb.classList.contains('show')){
-    document.getElementById('narrativeNext').className='narrative-next'+(hasMore?' show':'');
+    document.getElementById('narrativeNext').className='narrative-next show';
   }
+
+  function advance(){
+    // 全クリックリスナーを解除
+    document.getElementById('narrativeBox').onclick=null;
+    document.getElementById('speechPlayerText').onclick=null;
+    document.getElementById('speechEnemyText').onclick=null;
+    document.removeEventListener('click', globalAdvance);
+    if(hasMore) mqNext();
+    else{
+      setTimeout(function(){
+        hideSpeech();hideNarrative();
+        if(MQ.onDone)MQ.onDone();
+      }, 600);
+    }
+  }
+
+  // グローバルクリックで進む（画面のどこをクリックしても）
+  function globalAdvance(e){
+    // カード・ボタンのクリックは無視
+    if(e.target.closest('.card')||e.target.closest('.end-btn')||e.target.closest('.apply-panel')) return;
+    advance();
+  }
+
   if(hasMore){
     document.getElementById('narrativeBox').className='narrative-box show clickable';
-    document.getElementById('narrativeBox').onclick=function(){
-      document.getElementById('narrativeBox').onclick=null;
-      mqNext();
-    };
-    document.getElementById('scene-click-layer') && (document.getElementById('scene-click-layer').onclick=function(){
-      document.getElementById('narrativeBox').onclick && document.getElementById('narrativeBox').onclick();
-    });
-  } else {
-    setTimeout(function(){
-      hideSpeech();hideNarrative();
-      if(MQ.onDone)MQ.onDone();
-    }, 1200);
   }
+
+  // 少し遅延してから登録（タイプライター中の誤クリック防止）
+  setTimeout(function(){
+    document.getElementById('narrativeBox').onclick=advance;
+    document.getElementById('speechPlayerText').onclick=advance;
+    document.getElementById('speechEnemyText').onclick=advance;
+    document.addEventListener('click', globalAdvance, {once:true});
+  }, 400);
 }
 
 function showSpeech(who, text, cb){
