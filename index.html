@@ -142,14 +142,32 @@ body{background:var(--bg);color:var(--text);font-family:'M PLUS Rounded 1c',sans
 .enemy-bubble{background:rgba(100,30,20,.85);border-color:rgba(200,60,40,.5);backdrop-filter:blur(4px)}
 .enemy-bubble::after{content:'';position:absolute;top:50%;right:-11px;transform:translateY(-50%);border:6px solid transparent;border-left-color:rgba(200,60,40,.5);border-right:none}
 
-/* ナラティブ */
-.narrative-box{background:rgba(10,6,2,.92);border-top:1px solid rgba(200,160,60,.3);border-bottom:1px solid rgba(200,160,60,.3);padding:.75rem 1.5rem 1rem;min-height:52px;cursor:pointer;display:none;position:relative;transition:background .15s}
+/* ナラティブ - 中央上部に浮かせる */
+.narrative-box{
+  position:absolute;top:8px;left:50%;transform:translateX(-50%);
+  width:260px;z-index:20;
+  background:rgba(8,5,2,.92);
+  border:1px solid rgba(200,160,60,.35);
+  border-radius:6px;
+  padding:.65rem 1rem .7rem;
+  cursor:pointer;display:none;
+  box-shadow:0 4px 20px rgba(0,0,0,.7),0 0 0 1px rgba(200,160,60,.1);
+}
 .narrative-box.show{display:block}
-.narrative-box.show:hover{background:rgba(25,15,5,.95);border-top-color:rgba(200,160,60,.5);border-bottom-color:rgba(200,160,60,.5)}
-.narrative-text{font-size:.75rem;line-height:1.9;color:#c8a878;font-style:italic}
-.narrative-next{font-size:.6rem;color:#a07840;text-align:right;margin-top:6px;animation:blink 1s ease-in-out infinite;display:none;letter-spacing:.04em}
+.narrative-box.show:hover{border-color:rgba(200,160,60,.6)}
+.narrative-text{font-size:.72rem;line-height:1.8;color:#d4b87a;font-style:italic;text-align:center}
+.narrative-next{font-size:.56rem;color:#8a6830;text-align:center;margin-top:5px;animation:blink 1s ease-in-out infinite;display:none;letter-spacing:.05em}
 .narrative-next.show{display:block}
 @keyframes blink{0%,100%{opacity:.3}50%{opacity:1}}
+
+/* ログ折りたたみ */
+.log-toggle{display:flex;align-items:center;gap:6px;padding:.3rem 1rem;cursor:pointer;user-select:none}
+.log-toggle-btn{font-size:.6rem;color:#5a4828;letter-spacing:.08em;text-transform:uppercase;border:1px solid rgba(120,80,40,.3);border-radius:3px;padding:2px 10px;transition:all .15s}
+.log-toggle-btn:hover{color:#8a6840;border-color:rgba(160,110,60,.4)}
+.log-count{font-size:.58rem;color:#4a3818;margin-left:2px}
+.log{background:rgba(0,0,0,.5);border-top:1px solid rgba(80,50,20,.3);padding:.4rem 1rem;font-size:.62rem;color:#5a4828;max-height:56px;overflow-y:auto;line-height:1.9;scrollbar-width:thin;scrollbar-color:rgba(120,80,40,.3) transparent;display:none}
+.log.open{display:block}
+.lp{color:#5a9ff5}.le{color:#c05050}.ls{color:#5a4828}.lc{color:#c8902a}.lt{color:#3a9060}
 
 /* ボトムUI */
 .bottom-ui{padding:.75rem 1rem;border-top:1px solid rgba(120,80,40,.2);display:flex;flex-direction:column;gap:.6rem}
@@ -267,6 +285,12 @@ body{background:var(--bg);color:var(--text);font-family:'M PLUS Rounded 1c',sans
     </div>
 
     <div class="battlefield">
+      <!-- ナラティブ：中央上部に浮かせる -->
+      <div class="narrative-box" id="narrativeBox" onclick="narrativeClick()">
+        <div class="narrative-text" id="narrativeText"></div>
+        <div class="narrative-next" id="narrativeNext">▼ タップして続ける</div>
+      </div>
+
       <div class="char">
         <div class="char-sprite-wrap" style="position:relative">
           <div style="position:absolute;bottom:10%;left:105%;width:140px;pointer-events:none;z-index:10">
@@ -306,12 +330,13 @@ body{background:var(--bg);color:var(--text);font-family:'M PLUS Rounded 1c',sans
       </div>
     </div>
 
-    <div class="narrative-box" id="narrativeBox">
-      <div class="narrative-text" id="narrativeText"></div>
-      <div class="narrative-next" id="narrativeNext">タップして続ける ▼</div>
-    </div>
+    <div class="narrative-box" id="narrativeBox2" style="display:none"></div>
 
-    <div class="log" id="log"><div class="ls">― カオスバトル開始！ ―</div></div>
+    <div class="log-toggle" onclick="toggleLog()">
+      <span class="log-toggle-btn" id="logToggleBtn">ログ ▾</span>
+      <span class="log-count" id="logCount"></span>
+    </div>
+    <div class="log" id="log"></div>
 
     <div class="apply-panel" id="apanel">
       <div class="apply-label" id="alabel">ClaudeのJSONをここに貼り付けて反映</div>
@@ -581,7 +606,31 @@ function updateUI(){
   renderBadges('pbadges',G.pStatus);renderBadges('ebadges',G.eStatus);
   renderPips();renderHand();
 }
-function addLog(txt,cls){var l=document.getElementById('log');var d=document.createElement('div');d.className=cls||'ls';d.textContent=txt;l.appendChild(d);l.scrollTop=l.scrollHeight;}
+function toggleLog(){
+  var log=document.getElementById('log');
+  var btn=document.getElementById('logToggleBtn');
+  if(log.classList.contains('open')){
+    log.classList.remove('open');
+    btn.textContent='ログ ▾';
+  } else {
+    log.classList.add('open');
+    btn.textContent='ログ ▴';
+    log.scrollTop=log.scrollHeight;
+  }
+}
+function narrativeClick(){
+  // narrativeBoxのonclick属性用（グローバルadvanceが動く）
+}
+var logLineCount=0;
+function addLog(txt,cls){
+  var l=document.getElementById('log');
+  var d=document.createElement('div');d.className=cls||'ls';d.textContent=txt;
+  l.appendChild(d);
+  logLineCount++;
+  var cnt=document.getElementById('logCount');
+  if(cnt)cnt.textContent='('+logLineCount+')';
+  if(l.classList.contains('open'))l.scrollTop=l.scrollHeight;
+}
 function anim(id,type){var el=document.getElementById(id);el.classList.remove('shake','bounce','spin');void el.offsetWidth;el.classList.add(type);setTimeout(function(){el.classList.remove(type);},600);}
 function showPanel(label,prompt){
   var est=estimateTokens(prompt),hc=Math.ceil(est*RATE);
@@ -711,8 +760,8 @@ function endGame(win){
   document.getElementById('game').appendChild(btn);
 }
 function initBattle(){
-  mqShow([{type:'enemy',text:'ふははは！かかってくるがよい！'}], null);
   addLog('― カオスバトル開始！HP300でスタート ―','ls');
+  mqShow([{type:'enemy',text:'ふははは！かかってくるがよい！'}], null);
   drawHand();updateUI();
 }
 </script>
