@@ -141,6 +141,15 @@ body{background:var(--bg);color:var(--text);font-family:'M PLUS Rounded 1c',sans
 .player-bubble::after{content:'';position:absolute;top:50%;left:-11px;transform:translateY(-50%);border:6px solid transparent;border-right-color:rgba(60,120,200,.5);border-left:none}
 .enemy-bubble{background:rgba(100,30,20,.85);border-color:rgba(200,60,40,.5);backdrop-filter:blur(4px)}
 .enemy-bubble::after{content:'';position:absolute;top:50%;right:-11px;transform:translateY(-50%);border:6px solid transparent;border-left-color:rgba(200,60,40,.5);border-right:none}
+/* 中央の続けるインジケーター */
+.center-next{
+  position:absolute;bottom:12px;left:50%;transform:translateX(-50%);
+  font-size:.6rem;color:#a07840;letter-spacing:.06em;
+  animation:blink 1s ease-in-out infinite;
+  display:none;white-space:nowrap;pointer-events:none;
+  text-shadow:0 1px 4px rgba(0,0,0,.9);z-index:25;
+}
+.center-next.show{display:block}
 
 /* ナラティブ - 中央上部に浮かせる */
 .narrative-box{
@@ -290,6 +299,8 @@ body{background:var(--bg);color:var(--text);font-family:'M PLUS Rounded 1c',sans
         <div class="narrative-text" id="narrativeText"></div>
         <div class="narrative-next" id="narrativeNext">▼ タップして続ける</div>
       </div>
+      <!-- 吹き出し中の続けるインジケーター -->
+      <div class="center-next" id="centerNext">▼ タップして続ける</div>
 
       <div class="char">
         <div class="char-sprite-wrap" style="position:relative">
@@ -462,6 +473,8 @@ function hideNarrative(){
   nb.className='narrative-box';
   document.getElementById('narrativeText').textContent='';
   document.getElementById('narrativeNext').className='narrative-next';
+  var cn=document.getElementById('centerNext');
+  if(cn) cn.className='center-next';
 }
 
 function mqShow(messages, onDone){
@@ -492,32 +505,34 @@ function mqNext(){
 
 function mqWaitClick(){
   var nb=document.getElementById('narrativeBox');
+  var cn=document.getElementById('centerNext');
   var hasMore=MQ.queue.length>0;
 
-  // narrativeBoxが表示中なら「続ける」表示
   if(nb.classList.contains('show')){
     document.getElementById('narrativeNext').className='narrative-next show';
+    if(cn) cn.className='center-next';
+  } else {
+    if(cn) cn.className='center-next show';
   }
 
   function advance(){
-    // 全クリックリスナーを解除
     document.getElementById('narrativeBox').onclick=null;
     document.getElementById('speechPlayerText').onclick=null;
     document.getElementById('speechEnemyText').onclick=null;
+    if(cn) cn.className='center-next';
     document.removeEventListener('click', globalAdvance);
     if(hasMore) mqNext();
     else{
       setTimeout(function(){
         hideSpeech();hideNarrative();
+        if(cn) cn.className='center-next';
         if(MQ.onDone)MQ.onDone();
       }, 600);
     }
   }
 
-  // グローバルクリックで進む（画面のどこをクリックしても）
   function globalAdvance(e){
-    // カード・ボタンのクリックは無視
-    if(e.target.closest('.card')||e.target.closest('.end-btn')||e.target.closest('.apply-panel')) return;
+    if(e.target.closest('.card')||e.target.closest('.end-btn')||e.target.closest('.apply-panel')||e.target.closest('.log-toggle')) return;
     advance();
   }
 
@@ -525,7 +540,6 @@ function mqWaitClick(){
     document.getElementById('narrativeBox').className='narrative-box show clickable';
   }
 
-  // 少し遅延してから登録（タイプライター中の誤クリック防止）
   setTimeout(function(){
     document.getElementById('narrativeBox').onclick=advance;
     document.getElementById('speechPlayerText').onclick=advance;
