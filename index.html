@@ -1,0 +1,796 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>カオスRPG ⚡ Chaos Card Battle</title>
+<link href="https://fonts.googleapis.com/css2?family=Zen+Antique&family=M+PLUS+Rounded+1c:wght@400;700&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #0d0d14;
+  --surface: #16161f;
+  --surface2: #1e1e2a;
+  --border: rgba(255,255,255,0.08);
+  --border2: rgba(255,255,255,0.15);
+  --text: #e8e6f0;
+  --text2: #9994b0;
+  --text3: #5a5570;
+  --accent: #c94f2a;
+  --accent2: #e8703a;
+  --player: #3a7bd5;
+  --player2: #5a9bf5;
+  --success: #2a9d5a;
+  --warning: #d4a027;
+  --danger: #c94040;
+  --radius: 12px;
+  --radius-sm: 8px;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html { font-size: 16px; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 1rem;
+}
+
+/* ヘッダー */
+.header {
+  text-align: center;
+  padding: 1.5rem 0 1rem;
+  width: 100%;
+  max-width: 680px;
+}
+.header h1 {
+  font-family: 'Zen Antique', serif;
+  font-size: clamp(1.4rem, 5vw, 2rem);
+  letter-spacing: .1em;
+  color: var(--text);
+  margin-bottom: .25rem;
+}
+.header h1 span { color: var(--accent2); }
+.header p { font-size: .8rem; color: var(--text3); letter-spacing: .05em; }
+
+/* APIキー設定 */
+.api-panel {
+  width: 100%;
+  max-width: 680px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .75rem 1rem;
+  margin-bottom: 1rem;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+.api-panel label { font-size: .75rem; color: var(--text3); white-space: nowrap; }
+.api-input {
+  flex: 1;
+  min-width: 180px;
+  background: var(--bg);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 6px 10px;
+  color: var(--text);
+  font-size: .8rem;
+  font-family: monospace;
+  outline: none;
+}
+.api-input:focus { border-color: var(--accent2); }
+.api-status { font-size: .75rem; padding: 4px 10px; border-radius: 99px; white-space: nowrap; }
+.api-status.ok  { background: rgba(42,157,90,.15); color: #4ecb8a; }
+.api-status.ng  { background: rgba(201,64,64,.15);  color: #f07070; }
+.api-status.none{ background: rgba(255,255,255,.05); color: var(--text3); }
+
+/* メイン */
+#game {
+  width: 100%;
+  max-width: 680px;
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+/* バトルシーン */
+.scene {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 1.25rem;
+}
+.battle-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  min-height: 120px;
+  margin-bottom: 1rem;
+}
+.char { text-align: center; min-width: 130px; }
+.sprite {
+  font-size: 48px;
+  display: block;
+  line-height: 1;
+  margin-bottom: 8px;
+  filter: drop-shadow(0 0 12px rgba(255,255,255,.1));
+}
+.sprite.shake { animation: shk .4s; }
+.sprite.bounce { animation: bnc .5s; }
+.sprite.spin   { animation: spn .5s; }
+@keyframes shk { 0%,100%{transform:translateX(0)} 25%{transform:translateX(-8px)} 75%{transform:translateX(8px)} }
+@keyframes bnc { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-18px)} }
+@keyframes spn { 0%{transform:rotate(0)} 100%{transform:rotate(360deg)} }
+.char-name { font-size: .7rem; color: var(--text3); font-weight: 700; margin-bottom: 6px; letter-spacing: .08em; text-transform: uppercase; }
+.hp-wrap { width: 110px; height: 6px; background: rgba(255,255,255,.08); border-radius: 3px; margin: 0 auto 4px; }
+.hp-bar  { height: 6px; border-radius: 3px; transition: width .5s, background .5s; }
+.hp-text { font-size: .7rem; color: var(--text2); }
+.token-info { font-size: .65rem; color: var(--text3); margin-top: 3px; }
+.badges { display: flex; flex-wrap: wrap; gap: 3px; justify-content: center; margin-top: 6px; min-height: 22px; }
+.badge { font-size: .65rem; padding: 2px 8px; border-radius: 99px; font-weight: 700; }
+.badge.good    { background: rgba(42,157,90,.2);  color: #4ecb8a; border: 1px solid rgba(42,157,90,.3); }
+.badge.bad     { background: rgba(201,64,64,.2);  color: #f07070; border: 1px solid rgba(201,64,64,.3); }
+.badge.weird   { background: rgba(212,160,39,.2); color: #f0c060; border: 1px solid rgba(212,160,39,.3); }
+.vs { font-size: .75rem; color: var(--text3); font-weight: 700; align-self: center; letter-spacing: .1em; }
+
+/* 吹き出しチャット */
+.chat-area {
+  min-height: 80px;
+  max-height: 220px;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: .75rem;
+  padding: 2px 0;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+.bubble-row { display: flex; align-items: flex-end; gap: 8px; animation: fadeUp .3s; }
+@keyframes fadeUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+.bubble-row.player { flex-direction: row; }
+.bubble-row.enemy  { flex-direction: row-reverse; }
+.bubble-row.gm     { justify-content: center; }
+.bubble-avatar { font-size: 24px; flex-shrink: 0; line-height: 1; }
+.bubble-col { display: flex; flex-direction: column; }
+.bubble-row.enemy .bubble-col { align-items: flex-end; }
+.bubble-name { font-size: .6rem; color: var(--text3); margin-bottom: 3px; font-weight: 700; letter-spacing: .05em; }
+.bubble {
+  max-width: 75%;
+  padding: 8px 12px;
+  font-size: .8rem;
+  line-height: 1.7;
+  color: var(--text);
+  border-radius: 12px;
+  white-space: pre-line;
+}
+.bubble-row.player .bubble { background: rgba(58,123,213,.2); border: 1px solid rgba(90,155,245,.2); border-radius: 12px 12px 12px 3px; }
+.bubble-row.enemy  .bubble { background: rgba(201,79,42,.2);  border: 1px solid rgba(232,112,58,.2); border-radius: 12px 12px 3px 12px; }
+.bubble-row.gm     .bubble { background: var(--surface2); border: 1px solid var(--border); border-radius: 10px; font-size: .75rem; color: var(--text2); max-width: 92%; text-align: center; }
+
+/* マナ＆ターン終了 */
+.mana-row { display: flex; align-items: center; gap: 8px; margin-bottom: .75rem; }
+.mana-label { font-size: .75rem; color: var(--text2); }
+.pips { display: flex; gap: 5px; }
+.pip { width: 16px; height: 16px; border-radius: 50%; border: 1px solid var(--border2); background: transparent; transition: background .2s; }
+.pip.on { background: var(--accent2); border-color: var(--accent2); box-shadow: 0 0 6px rgba(232,112,58,.5); }
+.end-btn {
+  margin-left: auto;
+  padding: 6px 16px;
+  font-size: .8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  transition: all .15s;
+}
+.end-btn:hover:not(:disabled) { background: var(--surface2); color: var(--text); border-color: var(--accent2); }
+.end-btn:disabled { opacity: .35; cursor: not-allowed; }
+
+/* 手札 */
+.hand-label { font-size: .65rem; color: var(--text3); font-weight: 700; letter-spacing: .08em; text-transform: uppercase; margin-bottom: 8px; }
+.hand { display: flex; gap: 8px; flex-wrap: wrap; min-height: 148px; align-items: flex-end; }
+.card {
+  width: 92px;
+  background: var(--surface2);
+  border: 1px solid rgba(201,79,42,.4);
+  border-radius: var(--radius);
+  padding: 10px 8px 8px;
+  cursor: pointer;
+  transition: transform .15s, border-color .15s, box-shadow .15s;
+  position: relative;
+  flex-shrink: 0;
+}
+.card:hover:not(.off) {
+  transform: translateY(-12px);
+  border-color: var(--accent2);
+  box-shadow: 0 8px 24px rgba(201,79,42,.3);
+}
+.card.off { opacity: .35; cursor: not-allowed; }
+.cost {
+  position: absolute;
+  top: -9px; left: -9px;
+  width: 22px; height: 22px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-size: .7rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--surface2);
+  box-shadow: 0 0 8px rgba(201,79,42,.5);
+}
+.cicon   { font-size: 24px; text-align: center; margin-bottom: 5px; line-height: 1; }
+.cname   { font-size: .68rem; font-weight: 700; color: var(--text); margin-bottom: 2px; line-height: 1.3; }
+.ctype   { font-size: .6rem; color: var(--text3); margin-bottom: 4px; }
+.cmystery{ font-size: .6rem; color: var(--accent2); line-height: 1.4; font-style: italic; opacity: .8; }
+
+/* ゲームログ */
+.log {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: .65rem 1rem;
+  font-size: .72rem;
+  color: var(--text3);
+  max-height: 80px;
+  overflow-y: auto;
+  line-height: 1.9;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border2) transparent;
+}
+.lp { color: var(--player2); }
+.le { color: #f07070; }
+.ls { color: var(--text3); }
+.lc { color: var(--accent2); }
+.lt { color: #4ecb8a; }
+
+/* 反映パネル */
+.apply-panel {
+  background: var(--surface);
+  border: 1px solid var(--border2);
+  border-radius: var(--radius);
+  padding: 1rem;
+  display: none;
+}
+.apply-panel.show { display: block; }
+.apply-label { font-size: .7rem; color: var(--text2); font-weight: 700; margin-bottom: 6px; letter-spacing: .05em; }
+.token-preview {
+  font-size: .7rem;
+  color: var(--text2);
+  margin-bottom: 8px;
+  padding: 6px 10px;
+  background: var(--surface2);
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  line-height: 1.7;
+}
+.apply-area {
+  width: 100%;
+  height: 80px;
+  font-size: .72rem;
+  font-family: monospace;
+  border: 1px solid var(--border2);
+  border-radius: var(--radius-sm);
+  padding: 8px 10px;
+  background: var(--bg);
+  color: var(--text);
+  resize: none;
+  margin-bottom: 8px;
+  outline: none;
+}
+.apply-area:focus { border-color: var(--accent2); }
+.apply-btns { display: flex; gap: 8px; }
+.apply-btn {
+  flex: 1;
+  padding: 8px;
+  font-size: .8rem;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border2);
+  background: transparent;
+  color: var(--text2);
+  cursor: pointer;
+  font-family: 'M PLUS Rounded 1c', sans-serif;
+  transition: all .15s;
+}
+.apply-btn:hover { background: var(--surface2); color: var(--text); }
+.apply-btn.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+.apply-btn.primary:hover { background: var(--accent2); border-color: var(--accent2); }
+.err { font-size: .7rem; color: #f07070; margin-top: 6px; display: none; }
+
+/* レスポンシブ */
+@media(max-width: 480px) {
+  body { padding: .5rem; }
+  .char { min-width: 100px; }
+  .sprite { font-size: 38px; }
+  .card { width: 80px; }
+  .cicon { font-size: 20px; }
+  .bubble { max-width: 85%; }
+}
+
+/* スクロールバー */
+::-webkit-scrollbar { width: 4px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>⚡ カオス<span>RPG</span></h1>
+  <p>謎のカードで魔王を倒せ — 使うほど勇者のHPが削れていく</p>
+</div>
+
+<!-- APIキー設定 -->
+<div class="api-panel">
+  <label>Anthropic API Key</label>
+  <input class="api-input" type="password" id="apiKey" placeholder="sk-ant-..." oninput="onKeyInput()">
+  <span class="api-status none" id="apiStatus">未設定（手動モード）</span>
+</div>
+
+<div id="game">
+  <div class="scene">
+    <div class="battle-row">
+      <div class="char">
+        <span class="sprite" id="psp">🧙</span>
+        <div class="char-name">勇者</div>
+        <div class="hp-wrap"><div class="hp-bar" id="php" style="background:#3a7bd5;width:100%"></div></div>
+        <div class="hp-text" id="phpt">HP 300/300</div>
+        <div class="token-info" id="tkinfo">消費トークン: 0</div>
+        <div class="badges" id="pbadges"></div>
+      </div>
+      <div class="vs">VS</div>
+      <div class="char">
+        <span class="sprite" id="esp">👹</span>
+        <div class="char-name">闇の魔王</div>
+        <div class="hp-wrap"><div class="hp-bar" id="ehp" style="background:#c94040;width:100%"></div></div>
+        <div class="hp-text" id="ehpt">HP 70/70</div>
+        <div class="badges" id="ebadges"></div>
+      </div>
+    </div>
+
+    <div class="chat-area" id="chat"></div>
+
+    <div class="mana-row">
+      <div class="mana-label">🌀 混沌マナ</div>
+      <div class="pips" id="pips"></div>
+      <button class="end-btn" id="etb" onclick="endTurn()">ターン終了 →</button>
+    </div>
+    <div class="hand-label">手札</div>
+    <div class="hand" id="hand"></div>
+  </div>
+
+  <div class="log" id="log"><div class="ls">― カオスバトル開始！HP300でスタート ―</div></div>
+
+  <div class="apply-panel" id="apanel">
+    <div class="apply-label" id="alabel">ClaudeのJSONをここに貼り付けて反映</div>
+    <div class="token-preview" id="tpreview"></div>
+    <textarea class="apply-area" id="atextarea" placeholder='{"narrative": "...", "playerLine": "...", "enemyLine": "...", ...}'></textarea>
+    <div class="apply-btns">
+      <button class="apply-btn primary" onclick="doApply()">✓ ゲームに反映</button>
+      <button class="apply-btn" onclick="cancelApply()">キャンセル</button>
+    </div>
+    <div class="err" id="aerr">JSONの形式が正しくありません。Claudeの返答をそのまま貼り付けてください。</div>
+  </div>
+</div>
+
+<script>
+var G = {
+  php:300, pmaxhp:300, ehp:70, emaxhp:70,
+  mana:3, maxMana:3, turn:1,
+  waiting:false, gameOver:false,
+  pStatus:[], eStatus:[],
+  history:[], hand:[],
+  mode:'card', totalTokens:0,
+  pendingPrompt:'', pendingCard:null
+};
+var RATE = 0.06;
+
+function estimateTokens(text) {
+  var jp = (text.match(/[\u3000-\u9fff\uff00-\uffef]/g)||[]).length;
+  return Math.ceil(jp * 1.0 + (text.length - jp) * 0.25);
+}
+
+function getApiKey() { return document.getElementById('apiKey').value.trim(); }
+
+function onKeyInput() {
+  var key = getApiKey();
+  var el = document.getElementById('apiStatus');
+  if (!key) { el.className='api-status none'; el.textContent='未設定（手動モード）'; }
+  else if (key.startsWith('sk-ant-')) { el.className='api-status ok'; el.textContent='✓ APIキー設定済み（自動モード）'; }
+  else { el.className='api-status ng'; el.textContent='⚠ キーの形式を確認してください'; }
+}
+
+var CARDS = [
+  {id:'c1',  name:'中指を突き出す',     icon:'🖕', cost:1, mystery:'何かが起きるかも'},
+  {id:'c2',  name:'謎の赤い薬',         icon:'🧪', cost:1, mystery:'飲むと…？'},
+  {id:'c3',  name:'バナナの皮',         icon:'🍌', cost:0, mystery:'そっと置いてみる'},
+  {id:'c4',  name:'古い呪文書',         icon:'📜', cost:2, mystery:'読めない文字が並ぶ'},
+  {id:'c5',  name:'ハーモニカ',         icon:'🎵', cost:1, mystery:'吹いてみると…'},
+  {id:'c6',  name:'謎の手紙',           icon:'✉️', cost:1, mystery:'誰かに渡す'},
+  {id:'c7',  name:'鏡',                 icon:'🪞', cost:2, mystery:'覗き込むと…'},
+  {id:'c8',  name:'ゴム製のアヒル',     icon:'🦆', cost:0, mystery:'ぎゅっと握る'},
+  {id:'c9',  name:'砂時計',             icon:'⏳', cost:2, mystery:'ひっくり返す'},
+  {id:'c10', name:'謎のきのこ',         icon:'🍄', cost:1, mystery:'食べてみる？'},
+  {id:'c11', name:'呪われた硬貨',       icon:'🪙', cost:0, mystery:'投げてみる'},
+  {id:'c12', name:'空の瓶',             icon:'🫙', cost:0, mystery:'何かが入っていた…'},
+  {id:'c13', name:'天使の羽根',         icon:'🪶', cost:1, mystery:'触れると温かい'},
+  {id:'c14', name:'よく分からない機械', icon:'⚙️', cost:2, mystery:'ボタンを押す'},
+  {id:'c15', name:'滅びの詩',           icon:'📿', cost:3, mystery:'唱えるべきでは…'},
+  {id:'c16', name:'見知らぬ誰かの靴',   icon:'👟', cost:0, mystery:'履いてみる'},
+  {id:'c17', name:'笑い袋',             icon:'😂', cost:1, mystery:'押すと笑い声が…'},
+  {id:'c18', name:'沈黙の石',           icon:'🪨', cost:1, mystery:'ただそこにある'},
+  {id:'c19', name:'太陽のかけら',       icon:'☀️', cost:2, mystery:'握ると眩しい'},
+  {id:'c20', name:'謎の地図',           icon:'🗺️', cost:1, mystery:'どこかへ続く'},
+];
+
+function rand(a,b) { return Math.floor(Math.random()*(b-a+1))+a; }
+function drawHand() {
+  var pool=CARDS.slice(), hand=[];
+  while(hand.length<4&&pool.length>0) {
+    var i=rand(0,pool.length-1);
+    hand.push(Object.assign({},pool[i]));
+    pool.splice(i,1);
+  }
+  G.hand=hand;
+}
+
+function addBubble(type, name, avatar, text) {
+  var chat=document.getElementById('chat');
+  var row=document.createElement('div');
+  row.className='bubble-row '+type;
+  if(type==='gm') {
+    row.innerHTML='<div class="bubble">'+escHtml(text)+'</div>';
+  } else {
+    var av='<div class="bubble-avatar">'+avatar+'</div>';
+    var col='<div class="bubble-col"><div class="bubble-name">'+escHtml(name)+'</div><div class="bubble">'+escHtml(text)+'</div></div>';
+    row.innerHTML = type==='player' ? av+col : col+av;
+  }
+  chat.appendChild(row);
+  chat.scrollTop=chat.scrollHeight;
+}
+function escHtml(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderPips() {
+  var p=document.getElementById('pips'); p.innerHTML='';
+  for(var i=0;i<G.maxMana;i++) {
+    var d=document.createElement('div');
+    d.className='pip'+(i<G.mana?' on':'');
+    p.appendChild(d);
+  }
+}
+function renderBadges(id, arr) {
+  var el=document.getElementById(id); el.innerHTML='';
+  arr.forEach(function(b) {
+    var d=document.createElement('span');
+    d.className='badge '+(b.type||'weird');
+    d.textContent=b.label;
+    el.appendChild(d);
+  });
+}
+function renderHand() {
+  var h=document.getElementById('hand'); h.innerHTML='';
+  G.hand.forEach(function(c,i) {
+    var cant=c.cost>G.mana||G.waiting||G.gameOver;
+    var div=document.createElement('div');
+    div.className='card'+(cant?' off':'');
+    div.innerHTML='<div class="cost">'+c.cost+'</div>'+
+      '<div class="cicon">'+c.icon+'</div>'+
+      '<div class="cname">'+escHtml(c.name)+'</div>'+
+      '<div class="ctype">???</div>'+
+      '<div class="cmystery">'+escHtml(c.mystery)+'</div>';
+    (function(idx){div.onclick=function(){useCard(idx);};})(i);
+    h.appendChild(div);
+  });
+}
+function updateUI() {
+  var pct=Math.max(0,G.php/G.pmaxhp*100);
+  var bar=document.getElementById('php');
+  bar.style.width=pct+'%';
+  bar.style.background=pct>60?'#3a7bd5':pct>30?'#d4a027':'#c94040';
+  document.getElementById('phpt').textContent='HP '+Math.max(0,G.php)+'/'+G.pmaxhp;
+  document.getElementById('tkinfo').textContent='消費トークン: '+G.totalTokens+'（推定）';
+  document.getElementById('ehp').style.width=Math.max(0,G.ehp/G.emaxhp*100)+'%';
+  document.getElementById('ehpt').textContent='HP '+Math.max(0,G.ehp)+'/'+G.emaxhp;
+  renderBadges('pbadges',G.pStatus);
+  renderBadges('ebadges',G.eStatus);
+  renderPips(); renderHand();
+}
+function addLog(txt,cls) {
+  var l=document.getElementById('log');
+  var d=document.createElement('div'); d.className=cls||'ls'; d.textContent=txt;
+  l.appendChild(d); l.scrollTop=l.scrollHeight;
+}
+function anim(id,type) {
+  var el=document.getElementById(id);
+  el.classList.remove('shake','bounce','spin');
+  void el.offsetWidth; el.classList.add(type);
+  setTimeout(function(){el.classList.remove(type);},600);
+}
+
+function showPanel(label, prompt) {
+  var est=estimateTokens(prompt);
+  var hpCost=Math.ceil(est*RATE);
+  document.getElementById('alabel').textContent=label;
+  document.getElementById('tpreview').textContent=
+    '📊 送信トークン推定: '+est+' → 勇者HP 約-'+hpCost+'\n（反映後に受信分も合算して確定）';
+  document.getElementById('atextarea').value='';
+  document.getElementById('aerr').style.display='none';
+  document.getElementById('apanel').className='apply-panel show';
+  document.getElementById('atextarea').focus();
+  G.pendingPrompt=prompt;
+}
+function cancelApply() {
+  G.waiting=false; G.mode='card';
+  document.getElementById('apanel').className='apply-panel';
+  document.getElementById('etb').disabled=false;
+  updateUI();
+  addBubble('gm','','','キャンセルしました。カードを選んでください。');
+}
+
+// API自動モードでClaudeを呼ぶ
+async function callClaude(prompt, systemPrompt) {
+  var key=getApiKey();
+  if(!key||!key.startsWith('sk-ant-')) return null;
+  try {
+    var res=await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST',
+      headers:{
+        'Content-Type':'application/json',
+        'x-api-key':key,
+        'anthropic-version':'2023-06-01',
+        'anthropic-dangerous-direct-browser-access':'true'
+      },
+      body:JSON.stringify({
+        model:'claude-sonnet-4-20250514',
+        max_tokens:1000,
+        system: systemPrompt||'カオスRPGのゲームマスターです。指定のJSON形式のみで返答してください。',
+        messages:[{role:'user',content:prompt}]
+      })
+    });
+    var data=await res.json();
+    var text=data.content.map(function(x){return x.text||'';}).join('');
+    var tokens=(data.usage&&data.usage.input_tokens&&data.usage.output_tokens)
+      ? data.usage.input_tokens+data.usage.output_tokens : null;
+    var cleaned=text.replace(/```json/g,'').replace(/```/g,'').trim();
+    return {json: JSON.parse(cleaned), tokens: tokens};
+  } catch(e) { return null; }
+}
+
+function doApply() {
+  var raw=document.getElementById('atextarea').value.trim();
+  raw=raw.replace(/```json/g,'').replace(/```/g,'').trim();
+  try {
+    var r=JSON.parse(raw);
+    document.getElementById('aerr').style.display='none';
+    document.getElementById('apanel').className='apply-panel';
+    var tS=estimateTokens(G.pendingPrompt);
+    var tR=estimateTokens(raw);
+    var total=tS+tR;
+    var hpLost=Math.ceil(total*RATE);
+    G.php=Math.max(0,G.php-hpLost);
+    G.totalTokens+=total;
+    addLog('🔋 トークン消費 '+total+'（送'+tS+'+受'+tR+'）→ HP -'+hpLost,'lt');
+    anim('psp','shake');
+    if(G.mode==='card') applyCard(r);
+    else applyEnemy(r);
+  } catch(e) {
+    document.getElementById('aerr').style.display='block';
+  }
+}
+
+function buildCardPrompt(c) {
+  var pSt=G.pStatus.map(function(s){return s.label;}).join('、')||'なし';
+  var eSt=G.eStatus.map(function(s){return s.label;}).join('、')||'なし';
+  var hist=G.history.slice(-3).join(' / ')||'なし';
+  return '🎲 カオスRPG ゲームマスター判定\n\n'+
+    'カード：'+c.icon+'「'+c.name+'」（'+c.mystery+'）\n'+
+    'ターン：'+G.turn+' / 勇者HP：'+G.php+'/'+G.pmaxhp+' / 魔王HP：'+G.ehp+'/'+G.emaxhp+'\n'+
+    '勇者の状態：'+pSt+'\n魔王の状態：'+eSt+'\n直近の出来事：'+hist+'\n\n'+
+    '※勇者のHPはトークン消費で削れます。\n\n'+
+    'このカードの使用結果を以下のJSON形式のみで返してください：\n'+
+    '{\n  "narrative": "何が起きたかの描写（2〜3文、面白く・予想外に）",\n'+
+    '  "playerLine": "勇者のセリフ1文",\n'+
+    '  "enemyLine": "魔王のセリフ1文（面白いリアクション）",\n'+
+    '  "playerHpDelta": 数値,\n  "enemyHpDelta": 数値,\n'+
+    '  "playerNewStatus": "ラベル（なければ空文字）",\n'+
+    '  "playerStatusType": "good/bad/weird",\n'+
+    '  "enemyNewStatus": "ラベル（なければ空文字）",\n'+
+    '  "enemyStatusType": "good/bad/weird",\n'+
+    '  "playerAnim": "shake/bounce/spin/none",\n'+
+    '  "enemyAnim": "shake/bounce/spin/none"\n}';
+}
+function buildEnemyPrompt() {
+  var pSt=G.pStatus.map(function(s){return s.label;}).join('、')||'なし';
+  var eSt=G.eStatus.map(function(s){return s.label;}).join('、')||'なし';
+  return '🎲 カオスRPG 魔王ターン判定\n\n'+
+    'ターン：'+G.turn+' / 勇者HP：'+G.php+'/'+G.pmaxhp+' / 魔王HP：'+G.ehp+'/'+G.emaxhp+'\n'+
+    '勇者の状態：'+pSt+'\n魔王の状態：'+eSt+'\n\n'+
+    '魔王がターンを行動します。カオスで面白い結果をJSONのみで返してください：\n'+
+    '{\n  "narrative": "魔王の行動描写（2〜3文、カオスで面白く）",\n'+
+    '  "enemyLine": "魔王のセリフ1文",\n'+
+    '  "playerHpDelta": 数値,\n  "enemyHpDelta": 数値,\n'+
+    '  "playerNewStatus": "ラベル（なければ空文字）",\n'+
+    '  "playerStatusType": "good/bad/weird",\n'+
+    '  "enemyNewStatus": "ラベル（なければ空文字）",\n'+
+    '  "enemyStatusType": "good/bad/weird",\n'+
+    '  "playerAnim": "shake/bounce/spin/none",\n'+
+    '  "enemyAnim": "shake/bounce/spin/none"\n}';
+}
+
+async function useCard(i) {
+  if(G.waiting||G.gameOver) return;
+  var c=G.hand[i];
+  if(!c||c.cost>G.mana) return;
+  G.mana-=c.cost; G.hand.splice(i,1);
+  G.waiting=true; G.mode='card'; G.pendingCard=c;
+  updateUI();
+  var prompt=buildCardPrompt(c);
+  addBubble('player','勇者','🧙',c.icon+' 「'+c.name+'」を使う！');
+  addLog('🌀 「'+c.name+'」を使用','lc');
+
+  var key=getApiKey();
+  if(key&&key.startsWith('sk-ant-')) {
+    // 自動モード
+    addBubble('gm','','','判定中...');
+    var result=await callClaude(prompt);
+    // 「判定中...」を削除
+    var chat=document.getElementById('chat');
+    if(chat.lastChild) chat.removeChild(chat.lastChild);
+    if(result) {
+      // 実トークン数があれば使う
+      if(result.tokens) {
+        var hpLost=Math.ceil(result.tokens*RATE);
+        G.php=Math.max(0,G.php-hpLost);
+        G.totalTokens+=result.tokens;
+        addLog('🔋 実トークン消費 '+result.tokens+' → HP -'+hpLost,'lt');
+        anim('psp','shake');
+        applyCard(result.json);
+      } else {
+        // 推定で反映
+        var tS=estimateTokens(prompt);
+        var tR=estimateTokens(JSON.stringify(result.json));
+        var tot=tS+tR; var hl=Math.ceil(tot*RATE);
+        G.php=Math.max(0,G.php-hl); G.totalTokens+=tot;
+        addLog('🔋 推定トークン '+tot+' → HP -'+hl,'lt');
+        anim('psp','shake');
+        applyCard(result.json);
+      }
+    } else {
+      addBubble('gm','','','APIエラー。手動モードに切り替えてください。');
+      G.waiting=false; updateUI();
+    }
+  } else {
+    // 手動モード
+    showPanel('↓ ClaudeのJSONを貼り付けて「反映」', prompt);
+    // Claude.aiに送るプロンプトをクリップボードにコピー
+    if(navigator.clipboard) navigator.clipboard.writeText(prompt).catch(function(){});
+  }
+}
+
+function applyCard(r) {
+  if(r.narrative) addBubble('gm','','',r.narrative);
+  if(r.playerLine&&r.playerLine.trim()) addBubble('player','勇者','🧙','「'+r.playerLine+'」');
+  if(r.enemyLine&&r.enemyLine.trim())   addBubble('enemy','魔王','👹','「'+r.enemyLine+'」');
+  if(r.playerHpDelta) G.php=Math.min(G.pmaxhp,Math.max(0,G.php+r.playerHpDelta));
+  if(r.enemyHpDelta)  G.ehp=Math.min(G.emaxhp,Math.max(0,G.ehp+r.enemyHpDelta));
+  if(r.playerNewStatus&&r.playerNewStatus.trim()) {
+    G.pStatus=G.pStatus.filter(function(s){return s.label!==r.playerNewStatus;});
+    G.pStatus.push({label:r.playerNewStatus,type:r.playerStatusType||'weird'});
+    if(G.pStatus.length>3) G.pStatus.shift();
+  }
+  if(r.enemyNewStatus&&r.enemyNewStatus.trim()) {
+    G.eStatus=G.eStatus.filter(function(s){return s.label!==r.enemyNewStatus;});
+    G.eStatus.push({label:r.enemyNewStatus,type:r.enemyStatusType||'weird'});
+    if(G.eStatus.length>3) G.eStatus.shift();
+  }
+  if(r.playerAnim&&r.playerAnim!=='none') anim('psp',r.playerAnim);
+  if(r.enemyAnim&&r.enemyAnim!=='none')   anim('esp',r.enemyAnim);
+  if(r.enemyHpDelta&&r.enemyHpDelta!==0)  addLog('魔王HP '+(r.enemyHpDelta>0?'+':'')+r.enemyHpDelta,'le');
+  if(r.playerHpDelta&&r.playerHpDelta!==0) addLog('勇者HP（カード効果）'+(r.playerHpDelta>0?'+':'')+r.playerHpDelta,'lp');
+  G.history.push((r.narrative||'').slice(0,20));
+  G.waiting=false; updateUI();
+  if(G.ehp<=0){endGame(true);return;}
+  if(G.php<=0){endGame(false);return;}
+}
+
+async function endTurn() {
+  if(G.waiting||G.gameOver) return;
+  G.waiting=true; G.mode='enemy';
+  document.getElementById('etb').disabled=true;
+  var prompt=buildEnemyPrompt();
+  addBubble('gm','','','― ターン'+G.turn+' 終了。魔王のターン ―');
+  addLog('― ターン'+G.turn+' 終了 → 魔王のターン','ls');
+
+  var key=getApiKey();
+  if(key&&key.startsWith('sk-ant-')) {
+    addBubble('gm','','','魔王が行動を考えている...');
+    var result=await callClaude(prompt);
+    var chat=document.getElementById('chat');
+    if(chat.lastChild) chat.removeChild(chat.lastChild);
+    if(result) {
+      if(result.tokens) {
+        var hpLost=Math.ceil(result.tokens*RATE);
+        G.php=Math.max(0,G.php-hpLost);
+        G.totalTokens+=result.tokens;
+        addLog('🔋 実トークン消費 '+result.tokens+' → HP -'+hpLost,'lt');
+        anim('psp','shake');
+      }
+      applyEnemy(result.json);
+    } else {
+      addBubble('gm','','','APIエラー。手動モードに切り替えてください。');
+      G.waiting=false;
+      document.getElementById('etb').disabled=false;
+      updateUI();
+    }
+  } else {
+    showPanel('↓ 魔王ターン：ClaudeのJSONを貼り付けて「反映」', prompt);
+    if(navigator.clipboard) navigator.clipboard.writeText(prompt).catch(function(){});
+  }
+}
+
+function applyEnemy(r) {
+  if(r.narrative) addBubble('gm','','',r.narrative);
+  if(r.enemyLine&&r.enemyLine.trim()) addBubble('enemy','魔王','👹','「'+r.enemyLine+'」');
+  if(r.playerHpDelta&&r.playerHpDelta!==0) {
+    G.php=Math.max(0,G.php+r.playerHpDelta);
+    addLog('魔王の行動！ 勇者HP '+(r.playerHpDelta>0?'+':'')+r.playerHpDelta,'le');
+  }
+  if(r.enemyHpDelta&&r.enemyHpDelta!==0) {
+    G.ehp=Math.max(0,Math.min(G.emaxhp,G.ehp+r.enemyHpDelta));
+    addLog('魔王HP '+(r.enemyHpDelta>0?'+':'')+r.enemyHpDelta,'le');
+  }
+  if(r.playerNewStatus&&r.playerNewStatus.trim()) {
+    G.pStatus=G.pStatus.filter(function(s){return s.label!==r.playerNewStatus;});
+    G.pStatus.push({label:r.playerNewStatus,type:r.playerStatusType||'weird'});
+    if(G.pStatus.length>3) G.pStatus.shift();
+  }
+  if(r.enemyNewStatus&&r.enemyNewStatus.trim()) {
+    G.eStatus=G.eStatus.filter(function(s){return s.label!==r.enemyNewStatus;});
+    G.eStatus.push({label:r.enemyNewStatus,type:r.enemyStatusType||'weird'});
+    if(G.eStatus.length>3) G.eStatus.shift();
+  }
+  if(r.playerAnim&&r.playerAnim!=='none') anim('psp',r.playerAnim);
+  if(r.enemyAnim&&r.enemyAnim!=='none')   anim('esp',r.enemyAnim);
+  G.turn++; G.mana=G.maxMana;
+  drawHand(); G.waiting=false;
+  document.getElementById('etb').disabled=false;
+  updateUI();
+  addBubble('gm','','','― ターン'+G.turn+' 開始！新しいカードが配られた ―');
+  addLog('― ターン'+G.turn+' 開始！新しいカードを引いた ―','ls');
+  if(G.php<=0){endGame(false);return;}
+  if(G.ehp<=0){endGame(true);return;}
+}
+
+function endGame(win) {
+  G.gameOver=true;
+  document.getElementById('etb').disabled=true;
+  document.getElementById('hand').innerHTML='';
+  document.getElementById('apanel').className='apply-panel';
+  var msg=win
+    ?'🎉 勇者の勝利！総消費トークン '+G.totalTokens+' で魔王を倒した！'
+    :'💀 トークン切れ... 総消費 '+G.totalTokens+'。次はもっと効率よく！';
+  addBubble('gm','','',msg);
+  addLog(win?'― 勇者の勝利！トークン: '+G.totalTokens+' ―':'― トークン切れ！ゲームオーバー ―','ls');
+  var btn=document.createElement('button');
+  btn.className='end-btn';
+  btn.style.cssText='margin:.75rem auto 0;display:block;padding:10px 28px;font-size:.9rem';
+  btn.textContent='もう一度挑戦';
+  btn.onclick=function(){location.reload();};
+  document.getElementById('game').appendChild(btn);
+}
+
+addBubble('gm','','','カオスモード開始！謎のカードをクリックして使おう。');
+addBubble('enemy','魔王','👹','「ふははは！かかってくるがよい！」');
+drawHand(); updateUI();
+</script>
+</body>
+</html>
